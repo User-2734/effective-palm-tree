@@ -12,6 +12,7 @@ WINDOW_SIZE = (512 + 64, 512 + 32)
 DRAW_CYCLE = False
 DRAW_GRID = False
 
+AI = False
 MOVE_SPEED = 5
 FRAMERATE = 60
 
@@ -137,8 +138,8 @@ while running:
                 next_direction = 0
     
     if frame_num % MOVE_RATE == 0:
-        # board.turn(next_direction)
-        board.make_ai_move()
+        if AI: board.make_ai_move()
+        else: board.turn(next_direction)
         if moving:
             try:
                 board.step()

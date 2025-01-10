@@ -139,6 +139,7 @@ class Board:
 
         # TODO randomize this more
         # TODO make this work on grids where the even and odd axes are switched
+        # TODO add in input validation
         cycle = [start_pos]
 
         top_y = self.height - 1
@@ -207,7 +208,13 @@ class Board:
             self.move_apple()
 
     def position_to_path_index(self, position: Position) -> int:
-        # TODO comment this
+        """Gets ths index in self.cycle of position.
+        
+        Args:
+            position: the position to find
+        
+        Returns:
+            The index of positoin in self.cycle"""
         return self.cycle.index(position)
 
     def get_path_index(self) -> int:
@@ -250,6 +257,15 @@ class Board:
         return direction
     
     def index_difference(self, current: int, target: int) -> int:
+        """Calculates how many steps in the cycle it would take to get from current to target.
+        Effectivley calculates the distance between two points in self.cycle.
+        
+        Args:
+            current: the start index for the calculation
+            target: the stop index for the calculation
+        
+        Returns:
+            How many steps in the cycle it would take to go from current to target. """
         difference = 0
         while current != target:
             difference += 1
@@ -258,7 +274,8 @@ class Board:
         return difference
     
     def make_ai_move(self):
-        """This does not work. yet."""
+        """Allows the AI to make a move"""
+        # if we're still on cooldown from the last shortcut, just follow the program
         if self.cooldown > 0:
             self.turn(self.get_next_move())
             self.cooldown -= 1
@@ -291,5 +308,6 @@ class Board:
                 min_distance = distance_
                 best_direction = test_direction
         
+        # wait for the snake to fully clear the shortcut before making another shortcut
         self.cooldown = cooldown - 1
         self.turn(best_direction)
