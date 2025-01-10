@@ -126,7 +126,8 @@ class Board:
             0
         )
         self.apple = Apple(Position(3 * width // 4, height // 2))
-        self.cycle = [] # self.cycle = self.create_hamiltonian_cycle()
+        self.cycle = self.create_hamiltonian_cycle()
+        self.cooldown = 0
 
     def create_hamiltonian_cycle(self) -> list[Position]:
         """Connects all the spaces on the board into one big ciclical path for the snake to follow.
@@ -136,94 +137,37 @@ class Board:
             an ordered list of positions"""
         start_pos = Position(0, 0)
 
+        # TODO randomize this more
+        # TODO make this work on grids where the even and odd axes are switched
         cycle = [start_pos]
 
-        right_x = self.width - 1
         top_y = self.height - 1
-        left_x = 2
-        bottom_y = 0
-        current_pos = cycle[-1]
+        bottom_y = 1
 
-        while True:
-            # up
-            while current_pos.y < top_y:
-                cycle.append(Position(current_pos.x, current_pos.y + 1))
-                current_pos = cycle[-1]
-            top_y -= 2
+        right_x = self.width - 1
+        shifted = False
 
-            if left_x > right_x and bottom_y > top_y:
-                break
-
-            # right
-            while current_pos.x < right_x:
+        # allow space for a botom channel
+        while cycle[0] != cycle[-1] or len(cycle) == 1:
+            current_pos = cycle[-1]
+            if current_pos.y == top_y and not shifted:
+                shifted = True
                 cycle.append(Position(current_pos.x + 1, current_pos.y))
-                current_pos = cycle[-1]
-            right_x -= 2
-
-            if left_x > right_x and bottom_y > top_y:
-                break
-
-            # down
-            while current_pos.y > bottom_y:
-                cycle.append(Position(current_pos.x, current_pos.y - 1))
-                current_pos = cycle[-1]
-            bottom_y += 2
-
-            if left_x > right_x and bottom_y > top_y:
-                break
-
-            # left
-            while current_pos.x > left_x:
+            elif current_pos.y == bottom_y and current_pos.x != 0 and current_pos.x != right_x and not shifted:
+                shifted = True
+                cycle.append(Position(current_pos.x + 1, current_pos.y))
+            elif current_pos.y == 0 and current_pos.x != 0:
                 cycle.append(Position(current_pos.x - 1, current_pos.y))
-                current_pos = cycle[-1]
-            left_x += 2
-
-            if left_x > right_x and bottom_y > top_y:
-                print('Breaking')
-                break
+            else:
+                shifted = False
+                if current_pos.x % 2 == 0:
+                    cycle.append(Position(current_pos.x, current_pos.y + 1))
+                else:
+                    cycle.append(Position(current_pos.x, current_pos.y - 1))
         
-        # we start on the left, so we end on the left
-        # so to draw a spiral on the right, we move 1 unit right
-        cycle.append(Position(current_pos.x + 1, current_pos.y))
-        current_pos = cycle[-1]
-        cycle.append(Position(current_pos.x, current_pos.y - 1))
-        current_pos = cycle[-1]
-        cycle.append(Position(current_pos.x + 1, current_pos.y))
-        current_pos = cycle[-1]
-        top_y += 1
-        left_x -= 1
-        bottom_y -= 1
-        right_x += 1
-        while True:
-            # up
-            top_y += 2
-            while current_pos.y < top_y:
-                cycle.append(Position(current_pos.x, current_pos.y + 1))
-                current_pos = cycle[-1]
-
-            # left
-            left_x -= 2
-            while current_pos.x > left_x:
-                cycle.append(Position(current_pos.x - 1, current_pos.y))
-                current_pos = cycle[-1]
-
-            # down
-            bottom_y -= 2
-            while current_pos.y > bottom_y and current_pos.y > 0:
-                cycle.append(Position(current_pos.x, current_pos.y - 1))
-                current_pos = cycle[-1]
-            
-            # we only break here because we're guarenteed to end up going down
-            if current_pos.y == 0:
-                break
-
-            # right
-            right_x += 2
-            while current_pos.x < right_x:
-                cycle.append(Position(current_pos.x + 1, current_pos.y))
-                current_pos = cycle[-1]
-
+        cycle.pop(-1)
         return cycle
+
 
     def turn(self, direction: int) -> None:
         """Rotates the snake in a direction.
@@ -241,7 +185,7 @@ class Board:
                 pos = Position(x, y)
                 if pos not in self.snake.positions:
                     positions.append(pos)
-        if not pos: raise Exception('We\'ve won!')
+        if not positions: raise Exception('You Win!')
         self.apple.position = choice(positions)
     
     def step(self) -> None:
@@ -262,19 +206,30 @@ class Board:
             self.snake.length += 1
             self.move_apple()
 
-    def get_cycle_position(self) -> int:
+    def position_to_path_index(self, position: Position) -> int:
+        # TODO comment this
+        return self.cycle.index(position)
+
+    def get_path_index(self) -> int:
         """Returns where in the cycle the snake is
         
         Returns:
             the index in the cycle of the position of the snake's head"""
-        return self.cycle.index(self.snake.head_position())
+        return self.position_to_path_index(self.snake.head_position())
+    
+    def get_apple_index(self) -> int:
+        """Returns where in the cycle the apple is
+        
+        Returns:
+            the index in the cycle of the position of the apple"""
+        return self.position_to_path_index(self.apple.position)
     
     def get_next_move(self) -> int:
         """Returns the direction the snake needs to turn to follow the cycle
         
         Returns:
             the direction the snake should turn"""
-        current_index = self.get_cycle_position()
+        current_index = self.get_path_index()
         next_index = (current_index + 1) % len(self.cycle)
 
         current_position = self.snake.head_position()
@@ -294,35 +249,47 @@ class Board:
         
         return direction
     
+    def index_difference(self, current: int, target: int) -> int:
+        difference = 0
+        while current != target:
+            difference += 1
+            current += 1
+            current %= len(self.cycle)
+        return difference
+    
     def make_ai_move(self):
         """This does not work. yet."""
-        apple_index = self.cycle.index(self.apple.position)
-        head_index = self.cycle.index(self.snake.head_position())
-        apple_pos = self.apple.position
-        head_pos = self.snake.head_position()
-
-        current_direction = self.snake.direction
-        remaining_directions = [0, 1, 2, 3]
-        remaining_directions.remove((current_direction + 2) % 4)
-
-        cx, cy = head_pos
-
-        directions = []
-        for direction in remaining_directions:
-            dx, dy = direction_to_offset(direction)
-            directions.append(distance(Position(cx + dx, cy + dy), apple_pos))
-        
-        best_direction = remaining_directions[min(range(len(directions)), key=lambda x: directions[x])]
-
-        dx, dy = direction_to_offset(best_direction)
-        test_position = Position(cx + dx, cy + dy)
-
-        # TODO implement domain/range tests
-        test_index = self.cycle.index(test_position)
-        if (test_index + (self.snake.length - 1) >= apple_index) and False:
-            print('Snake may be too long')
+        if self.cooldown > 0:
             self.turn(self.get_next_move())
+            self.cooldown -= 1
             return
+        # generate each direction we can turn
+        directions = list(range(4))
+        directions.remove((self.snake.direction + 2) % 4)
         
-        print(test_index, head_index)
+        # default scenario where we just follow the curve
+        min_distance = self.index_difference(self.get_path_index() + 1, self.get_apple_index())
+        best_direction = self.get_next_move()
+        cooldown = 0
+
+        cx, cy = self.snake.head_position()
+
+        # evaluate the directions.
+        for test_direction in directions:
+            dx, dy = direction_to_offset(test_direction)
+            test_pos = Position(cx + dx, cy + dy)
+            if test_pos in self.snake.positions: continue
+            try:
+                test_index = self.position_to_path_index(test_pos)
+            except ValueError: # out of bounds
+                continue
+            distance_ = self.index_difference(test_index, self.get_apple_index())
+            if distance_ < min_distance:
+                # TODO add in some more checks here
+                # prevent taking shortcuts that compromise the path
+                cooldown = self.snake.length
+                min_distance = distance_
+                best_direction = test_direction
+        
+        self.cooldown = cooldown - 1
         self.turn(best_direction)

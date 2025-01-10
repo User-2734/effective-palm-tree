@@ -8,6 +8,15 @@ import game
 # define the size of the window
 WINDOW_SIZE = (512 + 64, 512 + 32)
 
+# define what to draw
+DRAW_CYCLE = False
+DRAW_GRID = False
+
+MOVE_SPEED = 5
+FRAMERATE = 60
+
+MOVE_RATE = FRAMERATE // MOVE_SPEED
+
 # initialize the board
 board = game.Board(18, 17)
 
@@ -28,18 +37,23 @@ def draw_board(board: game.Board):
     Args:
         board: the board that is the game"""
     global WINDOW_SIZE
+    global DRAW_GRID
+    global DRAW_CYCLE
     global window_surface
 
-    # draw the background grid
+    
     grid_width = WINDOW_SIZE[0] / board.width
     grid_height = WINDOW_SIZE[1] / board.height
+    
+    if DRAW_GRID:
+        # draw the background grid
+        # vertical lines
+        for x in range(1, board.width):
+            line(window_surface, '#444444', (x * grid_width, 0), (x * grid_width, WINDOW_SIZE[1]))
 
-    # vertical lines
-    for x in range(1, board.width):
-        line(window_surface, '#444444', (x * grid_width, 0), (x * grid_width, WINDOW_SIZE[1]))
-
-    for y in range(1, board.height):
-        line(window_surface, '#444444', (0, y * grid_height), (WINDOW_SIZE[0], y * grid_height))
+        # horizontal lines
+        for y in range(1, board.height):
+            line(window_surface, '#444444', (0, y * grid_height), (WINDOW_SIZE[0], y * grid_height))
     
     # draw the apple
     y = (board.apple.position.y + 1) * grid_height
@@ -60,6 +74,7 @@ def draw_board(board: game.Board):
             Rect(position.x * grid_width, y, grid_width, grid_height)
         )
     
+    if not DRAW_CYCLE: return
     # draw the cycle:
     for p1, p2 in zip(board.cycle[:-1], board.cycle[1:]):
         x1, y1 = p1
@@ -101,6 +116,8 @@ frame_num = 0
 # input buffering
 next_direction = 0
 
+# win screen text
+status = ''
 # some bools to determine what we're doing
 running = True
 moving = True
@@ -119,15 +136,14 @@ while running:
             if event.key == pygame.K_d:
                 next_direction = 0
     
-    # only move once every 20 frames
-    if frame_num % 20 == 0:
-        board.turn(next_direction)
+    if frame_num % MOVE_RATE == 0:
+        # board.turn(next_direction)
+        board.make_ai_move()
         if moving:
             try:
                 board.step()
             except Exception as e:
-                # win/loss conditions are currently just exceptions
-                print(e)
+                status = e
                 moving = False
             
 
